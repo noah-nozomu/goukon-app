@@ -19,6 +19,8 @@ import { useVote } from "@/hooks/useVote";
 import BottomNav from "@/components/BottomNav";
 import type { Participant } from "@/types";
 
+const LS_SEEN_LIKES_KEY = "goukon_seen_likes";
+
 export default function ParticipantsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -29,9 +31,25 @@ export default function ParticipantsPage() {
   const [voteSending, setVoteSending] = useState<Set<string>>(new Set());
   const [matchedPartner, setMatchedPartner] = useState<Participant | null>(null);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+
+  // いいね通知トースト
   const [likeToast, setLikeToast] = useState<string | null>(null);
   const likeToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLikersRef = useRef<Set<string> | null>(null);
+
+  // もらったいいね一覧
+  const [likedByMap, setLikedByMap] = useState<Map<string, Participant>>(new Map());
+  const [likedByCount, setLikedByCount] = useState(0);
+  const [seenLikeCount, setSeenLikeCount] = useState(() =>
+    typeof window !== "undefined"
+      ? parseInt(localStorage.getItem(LS_SEEN_LIKES_KEY) ?? "0", 10)
+      : 0
+  );
+  const [showLikesModal, setShowLikesModal] = useState(false);
+  const fetchedLikerUidsRef = useRef<Set<string>>(new Set());
+
+  // 投票確認ダイアログ
+  const [voteTarget, setVoteTarget] = useState<Participant | null>(null);
 
   const { myLikes, sendLike } = useLike();
   const { myVotes, sendVote } = useVote(voteLimit);
@@ -54,38 +72,56 @@ export default function ParticipantsPage() {
     return () => unsubscribe();
   }, []);
 
-  // いいね受信通知のリアルタイムリスナー
+  // いいね受信：通知 + 一覧管理
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "likes"), where("to", "==", user.uid));
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const currentUids = new Set(snapshot.docs.map((d) => d.data().from as string));
+      const currentUids = snapshot.docs.map((d) => d.data().from as string);
+      setLikedByCount(currentUids.length);
 
-      // 初回ロード時は既存のいいねを記録するだけ（通知しない）
-      if (initialLikersRef.current === null) {
+      const isFirstLoad = initialLikersRef.current === null;
+      if (isFirstLoad) {
         initialLikersRef.current = new Set(currentUids);
-        return;
       }
 
-      // 新しくいいねしてくれた人だけ通知
       for (const uid of currentUids) {
-        if (!initialLikersRef.current.has(uid)) {
-          initialLikersRef.current.add(uid);
-          const senderSnap = await getDoc(doc(db, "participants", uid));
-          if (senderSnap.exists()) {
-            const sender = senderSnap.data() as Participant;
-            showLikeToast(`👍 ${sender.nickname}からいいねが届きました！`);
+        // 参加者データ未取得なら fetch
+        if (!fetchedLikerUidsRef.current.has(uid)) {
+          fetchedLikerUidsRef.current.add(uid);
+          const snap = await getDoc(doc(db, "participants", uid));
+          if (snap.exists()) {
+            const participant = snap.data() as Participant;
+            setLikedByMap((prev) => new Map([...prev, [uid, participant]]));
+            // 初回ロードでない場合のみトースト通知
+            if (!isFirstLoad) {
+              showLikeToast(`👍 ${participant.nickname}からいいねが届きました！`);
+            }
           }
+        } else if (!isFirstLoad && !initialLikersRef.current!.has(uid)) {
+          // 既取得だが初回セット後の新着通知
+          initialLikersRef.current!.add(uid);
+          const p = likedByMap.get(uid);
+          if (p) showLikeToast(`👍 ${p.nickname}からいいねが届きました！`);
         }
+
+        if (!isFirstLoad) initialLikersRef.current!.add(uid);
       }
     });
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const showLikeToast = (msg: string) => {
     if (likeToastTimer.current) clearTimeout(likeToastTimer.current);
     setLikeToast(msg);
     likeToastTimer.current = setTimeout(() => setLikeToast(null), 4000);
+  };
+
+  const openLikesModal = () => {
+    setShowLikesModal(true);
+    setSeenLikeCount(likedByCount);
+    localStorage.setItem(LS_SEEN_LIKES_KEY, String(likedByCount));
   };
 
   const handleLike = async (target: Participant) => {
@@ -98,7 +134,8 @@ export default function ParticipantsPage() {
     }
   };
 
-  const handleVote = async (target: Participant) => {
+  const handleVoteConfirmed = async (target: Participant) => {
+    setVoteTarget(null);
     if (voteSending.has(target.uid) || myVotes.has(target.uid)) return;
     if (myVotes.size >= voteLimit) return;
     setVoteSending((prev) => new Set([...prev, target.uid]));
@@ -112,6 +149,7 @@ export default function ParticipantsPage() {
 
   const others = participants.filter((p) => p.uid !== user?.uid);
   const votesRemaining = voteLimit - myVotes.size;
+  const unseenLikes = Math.max(0, likedByCount - seenLikeCount);
 
   return (
     <main className="min-h-screen pb-20">
@@ -120,6 +158,86 @@ export default function ParticipantsPage() {
       {likeToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white border border-pink-200 text-gray-800 px-5 py-3 rounded-2xl shadow-xl font-bold text-sm whitespace-nowrap">
           {likeToast}
+        </div>
+      )}
+
+      {/* もらったいいね モーダル */}
+      {showLikesModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
+          <div className="bg-white rounded-t-3xl w-full max-w-md p-6 pb-10 shadow-2xl max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between mb-5 flex-shrink-0">
+              <h2 className="font-black text-gray-800 text-lg">💌 もらったいいね</h2>
+              <button
+                onClick={() => setShowLikesModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {likedByCount === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <p className="text-4xl mb-3">💭</p>
+                  <p className="text-sm">まだいいねが届いていません</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {Array.from(likedByMap.values()).map((p) => (
+                    <div key={p.uid} className="flex items-center gap-3 py-2">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-pink-200 flex-shrink-0 relative bg-gray-100">
+                        <Image
+                          src={p.photoURL}
+                          alt={p.nickname}
+                          fill
+                          sizes="48px"
+                          className="object-cover"
+                        />
+                      </div>
+                      <span className="font-bold text-gray-800">{p.nickname}</span>
+                      <span className="ml-auto text-pink-400 text-lg">♥</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 投票確認ダイアログ */}
+      {voteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+          <div className="bg-white rounded-3xl p-8 w-full shadow-2xl">
+            <div className="w-16 h-16 rounded-full overflow-hidden mx-auto border-2 border-purple-200 relative mb-4 bg-gray-100">
+              <Image
+                src={voteTarget.photoURL}
+                alt={voteTarget.nickname}
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            </div>
+            <h2 className="text-xl font-black text-center text-gray-800 mb-2">
+              {voteTarget.nickname}さんに投票しますか？
+            </h2>
+            <p className="text-gray-400 text-sm text-center mb-6">
+              この操作は取り消せません
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setVoteTarget(null)}
+                className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => handleVoteConfirmed(voteTarget)}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-fuchsia-500 text-white font-black"
+              >
+                投票する
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -206,7 +324,6 @@ export default function ParticipantsPage() {
                   className="rounded-3xl overflow-hidden shadow-md bg-white border border-gray-100"
                 >
                   <div className="aspect-square relative bg-gray-200">
-                    {/* スケルトンローディング */}
                     {!loadedImages.has(p.uid) && (
                       <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
                     )}
@@ -249,7 +366,7 @@ export default function ParticipantsPage() {
                       </button>
                       {/* マッチング投票ボタン */}
                       <button
-                        onClick={() => handleVote(p)}
+                        onClick={() => !voted && !isVoteSending && !voteLimitReached && setVoteTarget(p)}
                         disabled={voted || isVoteSending || voteLimitReached}
                         className={`flex-1 h-8 rounded-xl text-xs font-bold transition-all duration-200 ${
                           voted
@@ -271,6 +388,19 @@ export default function ParticipantsPage() {
           </div>
         )}
       </div>
+
+      {/* もらったいいね フローティングボタン */}
+      <button
+        onClick={openLikesModal}
+        className="fixed bottom-24 right-4 flex items-center gap-2 bg-white border border-pink-200 text-pink-500 font-bold text-sm px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all z-30"
+      >
+        💌 もらったいいね
+        {unseenLikes > 0 && (
+          <span className="bg-pink-500 text-white text-xs font-black w-5 h-5 rounded-full flex items-center justify-center">
+            {unseenLikes > 9 ? "9+" : unseenLikes}
+          </span>
+        )}
+      </button>
 
       <BottomNav active="participants" />
     </main>

@@ -160,7 +160,7 @@ export default function ChatPage() {
             }
           }}
           placeholder="メッセージを入力..."
-          className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
+          className="flex-1 bg-gray-100 rounded-full px-4 py-2.5 text-sm text-black outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
         />
         <button
           onClick={handleSend}
