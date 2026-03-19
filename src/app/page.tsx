@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import ProfileForm from "@/components/profile/ProfileForm";
+import { useAuth } from "@/hooks/useAuth";
 
 const LS_KEY = "goukon_room_code";
 
@@ -12,6 +13,7 @@ type Screen = "loading" | "landing" | "room-code" | "register";
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
   const [screen, setScreen] = useState<Screen>("loading");
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [title, setTitle] = useState("💕 合コンマッチング");
@@ -32,6 +34,16 @@ export default function Home() {
     });
     return () => unsubscribe();
   }, []);
+
+  // 登録済みユーザーは /participants へ自動リダイレクト
+  useEffect(() => {
+    if (screen !== "register" || !user) return;
+    getDoc(doc(db, "participants", user.uid)).then((snap) => {
+      if (snap.exists()) {
+        router.replace("/participants");
+      }
+    });
+  }, [screen, user, router]);
 
   const handleSubmit = () => {
     if (!input) return;
