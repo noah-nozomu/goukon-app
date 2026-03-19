@@ -94,7 +94,7 @@ export default function ChatPage() {
       <header className="flex-shrink-0 bg-gradient-to-r from-fuchsia-500 to-pink-500 px-4 pt-12 pb-4 text-white flex items-center gap-3">
         <button
           onClick={() => router.push("/matches")}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors text-lg"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors text-lg flex-shrink-0"
         >
           ←
         </button>
@@ -107,14 +107,20 @@ export default function ChatPage() {
                 className="w-full h-full object-cover"
               />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="font-bold text-sm leading-tight">{partner.nickname}さん</p>
               <p className="text-pink-100 text-xs">マッチング成立 💕</p>
             </div>
           </>
         ) : (
-          <div className="h-10 w-32 bg-white/20 rounded-full animate-pulse" />
+          <div className="h-10 w-32 bg-white/20 rounded-full animate-pulse flex-1" />
         )}
+        <button
+          onClick={() => router.push("/participants")}
+          className="flex-shrink-0 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-full text-xs font-bold transition-colors"
+        >
+          参加者一覧
+        </button>
       </header>
 
       {/* メッセージ一覧 */}
