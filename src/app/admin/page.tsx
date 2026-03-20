@@ -175,7 +175,7 @@ function AdminDashboard() {
     <main className="min-h-screen bg-gray-50">
       <header className="bg-gradient-to-r from-gray-700 to-gray-900 px-6 pt-12 pb-6 text-white">
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.replace("/")}
           className="mb-3 flex items-center gap-1 text-gray-400 text-sm hover:text-white transition-colors"
         >
           ← 戻る

@@ -19,6 +19,7 @@ export default function Home() {
   const [title, setTitle] = useState("💕 合コンマッチング");
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, "config", "session"), (snap) => {
@@ -35,15 +36,16 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // 登録済みユーザーは /participants へ自動リダイレクト
+  // 登録済みユーザーの確認
   useEffect(() => {
     if (screen !== "register" || !user) return;
     getDoc(doc(db, "participants", user.uid)).then((snap) => {
       if (snap.exists()) {
-        router.replace("/participants");
+        setIsRegistered(true);
+        setScreen("landing");
       }
     });
-  }, [screen, user, router]);
+  }, [screen, user]);
 
   const handleSubmit = () => {
     if (!input) return;
@@ -154,12 +156,29 @@ export default function Home() {
           <p className="text-pink-100 text-base mt-3 mb-12">気になる人に「いいね」を送ろう</p>
 
           <div className="flex flex-col gap-4 w-full">
-            <button
-              onClick={() => setScreen("room-code")}
-              className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
-            >
-              参加する 🎉
-            </button>
+            {isRegistered ? (
+              <>
+                <button
+                  onClick={() => router.replace("/participants")}
+                  className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
+                >
+                  続きから参加する 👀
+                </button>
+                <button
+                  onClick={() => { setIsRegistered(false); setScreen("room-code"); }}
+                  className="w-full py-3 bg-white/20 text-white font-bold text-base rounded-2xl border border-white/30 hover:bg-white/30 transition-colors active:scale-95"
+                >
+                  新しく参加する 🎉
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setScreen("room-code")}
+                className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
+              >
+                参加する 🎉
+              </button>
+            )}
             <button
               onClick={() => router.push("/admin")}
               className="w-full py-3 bg-white/20 text-white font-bold text-base rounded-2xl border border-white/30 hover:bg-white/30 transition-colors active:scale-95"
