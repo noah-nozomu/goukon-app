@@ -157,20 +157,12 @@ export default function Home() {
 
           <div className="flex flex-col gap-4 w-full">
             {isRegistered ? (
-              <>
-                <button
-                  onClick={() => router.replace("/participants")}
-                  className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
-                >
-                  続きから参加する 👀
-                </button>
-                <button
-                  onClick={() => { setIsRegistered(false); setScreen("room-code"); }}
-                  className="w-full py-3 bg-white/20 text-white font-bold text-base rounded-2xl border border-white/30 hover:bg-white/30 transition-colors active:scale-95"
-                >
-                  新しく参加する 🎉
-                </button>
-              </>
+              <button
+                onClick={() => router.replace("/participants")}
+                className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
+              >
+                続きから参加する 👀
+              </button>
             ) : (
               <button
                 onClick={() => setScreen("room-code")}
