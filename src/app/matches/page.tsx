@@ -43,7 +43,7 @@ export default function MatchesPage() {
     <main className="min-h-screen pb-20">
       <header className="bg-gradient-to-r from-fuchsia-500 to-pink-500 px-6 pt-12 pb-6 text-white">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.replace("/participants")}
           className="mb-3 flex items-center gap-1 text-pink-100 text-sm hover:text-white transition-colors"
         >
           ← 戻る

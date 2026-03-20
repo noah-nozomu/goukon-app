@@ -278,7 +278,7 @@ export default function ParticipantsPage() {
 
       <header className="bg-gradient-to-r from-pink-500 to-rose-500 px-6 pt-12 pb-6 text-white">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.replace("/")}
           className="mb-3 flex items-center gap-1 text-pink-100 text-sm hover:text-white transition-colors"
         >
           ← 戻る
