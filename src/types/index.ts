@@ -24,6 +24,7 @@ export interface Match {
   users: string[];
   createdAt: Timestamp;
   lastMessage?: string;
+  unreadCount?: Record<string, number>;
 }
 
 export interface Message {

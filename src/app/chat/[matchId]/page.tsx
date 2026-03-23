@@ -7,6 +7,7 @@ import {
   collection,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   orderBy,
   query,
@@ -24,12 +25,13 @@ export default function ChatPage() {
   const router = useRouter();
 
   const [partner, setPartner] = useState<Participant | null>(null);
+  const [partnerUid, setPartnerUid] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // マッチ確認 + 相手情報取得
+  // マッチ確認 + 相手情報取得 + 既読リセット
   useEffect(() => {
     if (!user || !matchId) return;
     (async () => {
@@ -43,9 +45,14 @@ export default function ChatPage() {
         router.push("/matches");
         return;
       }
-      const partnerUid = match.users.find((u) => u !== user.uid)!;
-      const partnerSnap = await getDoc(doc(db, "participants", partnerUid));
+      const pUid = match.users.find((u) => u !== user.uid)!;
+      setPartnerUid(pUid);
+      const partnerSnap = await getDoc(doc(db, "participants", pUid));
       setPartner(partnerSnap.data() as Participant);
+      // 未読カウントをリセット
+      await updateDoc(doc(db, "matches", matchId), {
+        [`unreadCount.${user.uid}`]: 0,
+      });
     })();
   }, [user, matchId, router]);
 
@@ -82,6 +89,7 @@ export default function ChatPage() {
       });
       await updateDoc(doc(db, "matches", matchId), {
         lastMessage: trimmed,
+        ...(partnerUid ? { [`unreadCount.${partnerUid}`]: increment(1) } : {}),
       });
     } finally {
       setSending(false);

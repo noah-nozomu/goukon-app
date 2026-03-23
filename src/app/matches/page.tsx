@@ -7,6 +7,7 @@ import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import type { Match, Participant } from "@/types";
 
 type MatchItem = { match: Match; partner: Participant };
@@ -16,6 +17,7 @@ export default function MatchesPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<MatchItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const unreadMessages = useUnreadMessages();
 
   useEffect(() => {
     if (!user) return;
@@ -71,33 +73,44 @@ export default function MatchesPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {items.map(({ match, partner }) => (
-              <Link
-                key={match.id}
-                href={`/chat/${match.id}`}
-                className="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 hover:border-pink-200 transition-colors"
-              >
-                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-pink-200 flex-shrink-0">
-                  <img
-                    src={partner.photoURL}
-                    alt={partner.nickname}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-800">{partner.nickname}</p>
-                  <p className="text-gray-400 text-xs mt-0.5 truncate">
-                    {match.lastMessage ?? "メッセージを送ってみよう 👋"}
-                  </p>
-                </div>
-                <span className="text-pink-400 text-lg flex-shrink-0">→</span>
-              </Link>
-            ))}
+            {items.map(({ match, partner }) => {
+              const unread = match.unreadCount?.[user!.uid] ?? 0;
+              return (
+                <Link
+                  key={match.id}
+                  href={`/chat/${match.id}`}
+                  className={`flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border transition-colors ${
+                    unread > 0 ? "border-red-200 bg-red-50/30" : "border-gray-100 hover:border-pink-200"
+                  }`}
+                >
+                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-pink-200 flex-shrink-0">
+                    <img
+                      src={partner.photoURL}
+                      alt={partner.nickname}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-800">{partner.nickname}</p>
+                    <p className={`text-xs mt-0.5 truncate ${unread > 0 ? "text-gray-700 font-semibold" : "text-gray-400"}`}>
+                      {match.lastMessage ?? "メッセージを送ってみよう 👋"}
+                    </p>
+                  </div>
+                  {unread > 0 ? (
+                    <span className="bg-red-500 text-white text-xs font-black min-w-[22px] h-[22px] rounded-full flex items-center justify-center px-1 flex-shrink-0">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  ) : (
+                    <span className="text-pink-400 text-lg flex-shrink-0">→</span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
 
-      <BottomNav active="matches" />
+      <BottomNav active="matches" unreadMessages={unreadMessages} />
     </main>
   );
 }
