@@ -366,7 +366,7 @@ export default function ParticipantsPage() {
                       <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
                     )}
                     <Image
-                      src={p.photoURL}
+                      src={`${p.photoURL}${p.createdAt ? `?v=${p.createdAt.seconds}` : ""}`}
                       alt={p.nickname}
                       fill
                       sizes="(max-width: 768px) 50vw, 224px"

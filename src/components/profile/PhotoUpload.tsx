@@ -70,7 +70,7 @@ export default function PhotoUpload({ userId, onUploadComplete }: PhotoUploadPro
       const formData = new FormData();
       formData.append("file", blob);
       formData.append("upload_preset", uploadPreset);
-      formData.append("public_id", `goukon/${userId}`);
+      formData.append("public_id", `goukon/${userId}_${Date.now()}`);
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,

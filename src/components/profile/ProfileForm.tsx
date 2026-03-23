@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   doc,
+  getDoc,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,12 +35,23 @@ export default function ProfileForm() {
     setSaving(true);
     setError(null);
     try {
-      await setDoc(doc(db, "participants", user.uid), {
-        uid: user.uid,
-        nickname: nickname.trim(),
-        photoURL,
-        createdAt: serverTimestamp(),
-      });
+      const ref = doc(db, "participants", user.uid);
+      const existing = await getDoc(ref);
+      if (existing.exists()) {
+        // 既存ユーザーは photoURL と nickname を更新（createdAt を更新して画像キャッシュを無効化）
+        await updateDoc(ref, {
+          nickname: nickname.trim(),
+          photoURL,
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        await setDoc(ref, {
+          uid: user.uid,
+          nickname: nickname.trim(),
+          photoURL,
+          createdAt: serverTimestamp(),
+        });
+      }
       router.push("/participants");
     } catch (err) {
       console.error("登録失敗:", err);
