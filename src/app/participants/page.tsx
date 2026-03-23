@@ -31,13 +31,16 @@ export default function ParticipantsPage() {
   const [voteLimit, setVoteLimit] = useState(3);
   const [likeSending, setLikeSending] = useState<Set<string>>(new Set());
   const [voteSending, setVoteSending] = useState<Set<string>>(new Set());
-  const [matchedPartner, setMatchedPartner] = useState<Participant | null>(null);
+  const [matchNotification, setMatchNotification] = useState<{ partner: Participant; matchId: string } | null>(null);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
 
   // いいね通知トースト
   const [likeToast, setLikeToast] = useState<string | null>(null);
   const likeToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLikersRef = useRef<Set<string> | null>(null);
+
+  // マッチング通知（先に投票した側にも通知するためリアルタイム監視）
+  const initialMatchIdsRef = useRef<Set<string> | null>(null);
 
   // もらったいいね一覧
   const [likedByMap, setLikedByMap] = useState<Map<string, Participant>>(new Map());
@@ -74,6 +77,36 @@ export default function ParticipantsPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // マッチング成立をリアルタイム監視（両ユーザーに通知）
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "matches"),
+      where("users", "array-contains", user.uid)
+    );
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      if (initialMatchIdsRef.current === null) {
+        // 初回ロード時は既存マッチIDを記録するだけ
+        initialMatchIdsRef.current = new Set(snapshot.docs.map((d) => d.id));
+        return;
+      }
+      for (const d of snapshot.docs) {
+        if (!initialMatchIdsRef.current.has(d.id)) {
+          initialMatchIdsRef.current.add(d.id);
+          const partnerUid = (d.data().users as string[]).find((u) => u !== user.uid)!;
+          const partnerSnap = await getDoc(doc(db, "participants", partnerUid));
+          if (partnerSnap.exists()) {
+            setMatchNotification({
+              partner: partnerSnap.data() as Participant,
+              matchId: d.id,
+            });
+          }
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // いいね受信：通知 + 一覧管理
   useEffect(() => {
@@ -143,8 +176,7 @@ export default function ParticipantsPage() {
     if (myVotes.size >= voteLimit) return;
     setVoteSending((prev) => new Set([...prev, target.uid]));
     try {
-      const result = await sendVote(target.uid);
-      if (result.matched) setMatchedPartner(target);
+      await sendVote(target.uid);
     } finally {
       setVoteSending((prev) => { const n = new Set(prev); n.delete(target.uid); return n; });
     }
@@ -245,31 +277,33 @@ export default function ParticipantsPage() {
       )}
 
       {/* マッチング成立モーダル */}
-      {matchedPartner && (
+      {matchNotification && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
           <div className="bg-white rounded-3xl p-8 w-full text-center shadow-2xl">
             <p className="text-5xl mb-2">🎉</p>
             <h2 className="text-2xl font-black text-pink-500">マッチング成立！</h2>
             <div className="mt-4 w-24 h-24 rounded-full overflow-hidden mx-auto border-4 border-pink-300 relative">
               <Image
-                src={matchedPartner.photoURL}
-                alt={matchedPartner.nickname}
+                src={matchNotification.partner.photoURL}
+                alt={matchNotification.partner.nickname}
                 fill
                 className="object-cover"
                 sizes="96px"
               />
             </div>
-            <p className="mt-3 font-black text-gray-800 text-lg">{matchedPartner.nickname}さん</p>
+            <p className="mt-3 font-black text-gray-800 text-lg">
+              {matchNotification.partner.nickname}さんとマッチングしました！💕
+            </p>
             <p className="text-gray-400 text-sm mt-1">お互いにマッチング投票しました！</p>
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setMatchedPartner(null)}
+                onClick={() => setMatchNotification(null)}
                 className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-500 font-bold"
               >
                 閉じる
               </button>
               <a
-                href="/matches"
+                href={`/chat/${matchNotification.matchId}`}
                 className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black text-center"
               >
                 チャットへ →
@@ -316,6 +350,7 @@ export default function ParticipantsPage() {
           <div className="grid grid-cols-2 gap-4">
             {others.map((p) => {
               const liked = myLikes.has(p.uid);
+              const mutualLike = liked && likedByMap.has(p.uid);
               const voted = myVotes.has(p.uid);
               const isLikeSending = likeSending.has(p.uid);
               const isVoteSending = voteSending.has(p.uid);
@@ -339,7 +374,7 @@ export default function ParticipantsPage() {
                       className="object-cover"
                       onLoad={() => setLoadedImages((prev) => new Set([...prev, p.uid]))}
                     />
-                    {liked && (
+                    {mutualLike && (
                       <div className="absolute top-2 right-2 bg-pink-500 rounded-full w-7 h-7 flex items-center justify-center text-white text-sm shadow-lg">
                         ♥
                       </div>
