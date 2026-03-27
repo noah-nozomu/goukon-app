@@ -105,7 +105,7 @@ function AdminDashboard() {
     if (!newTitle.trim()) return;
     setSavingTitle(true);
     await setDoc(doc(db, "config", "session"), {
-      title: newTitle.trim(),
+      title: newTitle.replace(/^\s+|\s+$/g, ""),
     }, { merge: true });
     setNewTitle("");
     setSavingTitle(false);
@@ -192,17 +192,17 @@ function AdminDashboard() {
             アプリタイトル
           </p>
           <div className="text-center py-3 bg-gray-50 rounded-2xl border border-gray-100 mb-4">
-            <p className="text-xl font-black text-gray-800 break-words px-2">{appTitle}</p>
+            <p className="text-xl font-black text-gray-800 break-words px-2 whitespace-pre-wrap">{appTitle}</p>
             <p className="text-xs text-gray-400 mt-1">現在のタイトル</p>
           </div>
           <div className="flex flex-col gap-2">
-            <input
-              type="text"
-              maxLength={30}
+            <textarea
+              maxLength={50}
+              rows={3}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="例: 💕 合コンマッチング"
-              className="w-full py-3 px-4 border-2 border-gray-200 rounded-xl text-base font-bold text-black outline-none focus:border-pink-400 transition-colors"
+              placeholder={"例: 💕 合コンマッチング\n改行もできます"}
+              className="w-full py-3 px-4 border-2 border-gray-200 rounded-xl text-base font-bold text-black outline-none focus:border-pink-400 transition-colors resize-none"
             />
             <button
               onClick={handleSaveTitle}

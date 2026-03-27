@@ -127,7 +127,7 @@ export default function Home() {
             >
               ← 戻る
             </button>
-            <h1 className="text-3xl font-black leading-tight break-words">{title}</h1>
+            <h1 className="text-3xl font-black leading-tight break-words whitespace-pre-wrap">{title}</h1>
             <p className="text-pink-100 text-sm mt-3">気になる人に「いいね」を送ろう</p>
           </div>
         </header>
@@ -152,7 +152,7 @@ export default function Home() {
         <div className="absolute top-1/3 -left-8 w-24 h-24 rounded-full bg-white/5" />
 
         <div className="relative z-10 text-center w-full max-w-xs">
-          <h1 className="text-4xl font-black leading-tight mb-2 break-words">{title}</h1>
+          <h1 className="text-4xl font-black leading-tight mb-2 break-words whitespace-pre-wrap">{title}</h1>
           <p className="text-pink-100 text-base mt-3 mb-12">気になる人に「いいね」を送ろう</p>
 
           <div className="flex flex-col gap-4 w-full">
