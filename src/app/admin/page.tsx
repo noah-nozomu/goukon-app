@@ -12,12 +12,15 @@ import {
   serverTimestamp,
   setDoc,
   writeBatch,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Match } from "@/types";
 
 const ADMIN_PASSWORD = "0522";
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
+const DELETE_BATCH_SIZE = 400;
 
 // ---- パスワード入力画面 ----
 function AdminLogin({ onUnlock }: { onUnlock: () => void }) {
@@ -89,6 +92,16 @@ function AdminDashboard() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [participantsMap, setParticipantsMap] = useState<Record<string, string>>({});
 
+  const deleteDocsInChunks = async (
+    docs: QueryDocumentSnapshot<DocumentData>[]
+  ) => {
+    for (let i = 0; i < docs.length; i += DELETE_BATCH_SIZE) {
+      const batch = writeBatch(db);
+      docs.slice(i, i + DELETE_BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  };
+
   useEffect(() => {
     const unsubCode = onSnapshot(doc(db, "config", "session"), (snap) => {
       setAppTitle(snap.data()?.title ?? "💕 合コンマッチング");
@@ -155,31 +168,39 @@ function AdminDashboard() {
     setConfirmReset(false);
     try {
       const matchesSnap = await getDocs(collection(db, "matches"));
+      const messageDocs: QueryDocumentSnapshot<DocumentData>[] = [];
       for (const matchDoc of matchesSnap.docs) {
         const msgsSnap = await getDocs(
           collection(db, "messages", matchDoc.id, "messages")
         );
-        if (msgsSnap.docs.length > 0) {
-          const batch = writeBatch(db);
-          msgsSnap.docs.forEach((d) => batch.delete(d.ref));
-          await batch.commit();
-        }
+        messageDocs.push(...msgsSnap.docs);
       }
+      await deleteDocsInChunks(messageDocs);
+
       const [participantsSnap, likesSnap, votesSnap] = await Promise.all([
         getDocs(collection(db, "participants")),
         getDocs(collection(db, "likes")),
         getDocs(collection(db, "votes")),
       ]);
-      const batch = writeBatch(db);
-      participantsSnap.docs.forEach((d) => batch.delete(d.ref));
-      likesSnap.docs.forEach((d) => batch.delete(d.ref));
-      votesSnap.docs.forEach((d) => batch.delete(d.ref));
-      matchesSnap.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
+
+      await deleteDocsInChunks([
+        ...participantsSnap.docs,
+        ...likesSnap.docs,
+        ...votesSnap.docs,
+        ...matchesSnap.docs,
+      ]);
+
       showToast("✅ リセット完了！次の回が始められます");
     } catch (err) {
       console.error("リセット失敗:", err);
-      showToast("❌ エラーが発生しました");
+      const code = (err as { code?: string } | null)?.code ?? "";
+      if (code === "permission-denied") {
+        showToast("❌ 権限エラー（firestore.rules の delete 権限を確認）");
+      } else if (code === "resource-exhausted") {
+        showToast("❌ 件数が多すぎて失敗しました。再実行してください");
+      } else {
+        showToast("❌ エラーが発生しました");
+      }
     } finally {
       setResetting(false);
     }

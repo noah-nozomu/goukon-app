@@ -8,6 +8,8 @@ service cloud.firestore {
     }
 
     // 管理者チェック (Firebase カスタムクレーム: admin=true)
+    // NOTE: フロント側の管理画面パスワードだけではこの条件は満たされません。
+    //       管理系操作を使うには、対象ユーザーに custom claim の付与が必要です。
     function isAdmin() {
       return request.auth != null && request.auth.token.admin == true;
     }
