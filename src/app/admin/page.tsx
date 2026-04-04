@@ -7,11 +7,14 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import type { Match } from "@/types";
 
 const ADMIN_PASSWORD = "0522";
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
@@ -83,6 +86,8 @@ function AdminDashboard() {
   const [resetting, setResetting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [participantsMap, setParticipantsMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const unsubCode = onSnapshot(doc(db, "config", "session"), (snap) => {
@@ -92,8 +97,17 @@ function AdminDashboard() {
     });
     const unsubCount = onSnapshot(collection(db, "participants"), (snap) => {
       setParticipantCount(snap.size);
+      const map: Record<string, string> = {};
+      snap.docs.forEach((d) => { map[d.id] = d.data().nickname ?? d.id; });
+      setParticipantsMap(map);
     });
-    return () => { unsubCode(); unsubCount(); };
+    const unsubMatches = onSnapshot(
+      query(collection(db, "matches"), orderBy("createdAt", "desc")),
+      (snap) => {
+        setMatches(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Match)));
+      }
+    );
+    return () => { unsubCode(); unsubCount(); unsubMatches(); };
   }, []);
 
   const showToast = (msg: string) => {
@@ -297,6 +311,40 @@ function AdminDashboard() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* マッチング一覧 */}
+        <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+          <p className="text-xs text-gray-400 font-bold tracking-widest uppercase mb-4">
+            マッチング一覧
+          </p>
+          {matches.length === 0 ? (
+            <p className="text-center text-gray-300 text-sm py-4">まだマッチングがありません</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {matches.map((match) => {
+                const [uidA, uidB] = match.users;
+                const nameA = participantsMap[uidA] ?? "…";
+                const nameB = participantsMap[uidB] ?? "…";
+                const date = match.createdAt?.toDate();
+                const dateStr = date
+                  ? `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+                  : "";
+                return (
+                  <li
+                    key={match.id}
+                    className="flex items-center justify-between gap-2 bg-pink-50 rounded-2xl px-4 py-3"
+                  >
+                    <p className="font-bold text-gray-800 text-sm leading-snug">
+                      {nameA}さん <span className="text-pink-500">❤️</span> {nameB}さん
+                    </p>
+                    <p className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{dateStr}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="text-right text-xs text-gray-300 mt-3">{matches.length}件</p>
         </section>
 
         {/* リセット */}

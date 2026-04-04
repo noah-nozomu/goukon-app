@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ログイン済みかチェック
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 管理者チェック (Firebase カスタムクレーム: admin=true)
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // -------------------------------------------------------
+    // participants: ログイン済みユーザーなら読み取り可能
+    //               自分のドキュメント (uid == docId) のみ書き込み可能
+    //               管理者はすべて削除可能 (リセット用)
+    // -------------------------------------------------------
+    match /participants/{userId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if (isAuthenticated() && request.auth.uid == userId)
+                    || isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // likes: ログイン済みユーザーなら読み取り・作成可能
+    //        自分 (from == uid) のいいねのみ作成可能
+    //        管理者はすべて削除可能 (リセット用)
+    // -------------------------------------------------------
+    match /likes/{likeId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.from == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // votes: ログイン済みユーザーなら読み取り・作成可能
+    //        自分 (from == uid) の投票のみ作成可能
+    //        管理者はすべて削除可能 (リセット用)
+    // -------------------------------------------------------
+    match /votes/{voteId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.from == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // matches: 自分が含まれるマッチング (users 配列に uid が存在) のみ読み取り可能
+    //          マッチング作成・更新も自分が含まれる場合のみ可能
+    //          管理者はすべて削除可能 (リセット用)
+    // -------------------------------------------------------
+    match /matches/{matchId} {
+      allow read:   if isAuthenticated()
+                    && request.auth.uid in resource.data.users;
+      allow create: if isAuthenticated()
+                    && request.auth.uid in request.resource.data.users;
+      allow update: if isAuthenticated()
+                    && request.auth.uid in resource.data.users;
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // messages: ログイン済みユーザーなら読み取り・作成可能
+    //           自分 (senderId == uid) のメッセージのみ作成可能
+    //           管理者はすべて削除可能 (リセット用)
+    //           パス: messages/{matchId}/messages/{messageId}
+    // -------------------------------------------------------
+    match /messages/{matchId}/messages/{messageId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.senderId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // config: ログイン済みユーザーなら読み取り可能
+    //         書き込みは管理者のみ (カスタムクレーム admin=true 必須)
+    // -------------------------------------------------------
+    match /config/{configId} {
+      allow read:  if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}
