@@ -369,7 +369,7 @@ export default function ParticipantsPage() {
         </button>
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-black">参加者一覧 👀</h1>
+            <h1 className="text-2xl font-black">参加者一覧</h1>
             <p className="text-pink-100 text-sm mt-1">いいね＆マッチング投票を送ろう</p>
           </div>
           {/* 投票残数バッジ */}

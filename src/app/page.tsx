@@ -161,14 +161,14 @@ export default function Home() {
                 onClick={() => router.replace("/participants")}
                 className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
               >
-                続きから参加する 👀
+                続きから参加する
               </button>
             ) : (
               <button
                 onClick={() => setScreen("room-code")}
                 className="w-full py-5 bg-white text-pink-500 font-black text-xl rounded-3xl shadow-xl hover:shadow-2xl transition-shadow active:scale-95"
               >
-                参加する 🎉
+                参加する
               </button>
             )}
             <button

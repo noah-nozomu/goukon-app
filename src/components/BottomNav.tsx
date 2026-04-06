@@ -19,7 +19,7 @@ export default function BottomNav({
           active === "participants" ? "text-pink-500" : "text-gray-400"
         }`}
       >
-        <span className="text-xl">👀</span>
+        <span className="text-xl">👤</span>
         <span>参加者</span>
       </Link>
       <Link
