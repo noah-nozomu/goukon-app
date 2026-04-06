@@ -24,6 +24,7 @@ import type { Participant } from "@/types";
 const LS_SEEN_LIKES_KEY = "goukon_seen_likes";
 
 export default function ParticipantsPage() {
+  const LONG_PRESS_MS = 400;
   const router = useRouter();
   const { user } = useAuth();
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -55,6 +56,9 @@ export default function ParticipantsPage() {
 
   // 投票確認ダイアログ
   const [voteTarget, setVoteTarget] = useState<Participant | null>(null);
+  // 写真ズームモーダル
+  const [zoomTarget, setZoomTarget] = useState<Participant | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { myLikes, sendLike } = useLike();
   const { myVotes, sendVote } = useVote(voteLimit);
@@ -182,6 +186,21 @@ export default function ParticipantsPage() {
     }
   };
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = (target: Participant) => {
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      setZoomTarget(target);
+      longPressTimerRef.current = null;
+    }, LONG_PRESS_MS);
+  };
+
   const others = participants.filter((p) => p.uid !== user?.uid);
   const votesRemaining = voteLimit - myVotes.size;
   const unseenLikes = Math.max(0, likedByCount - seenLikeCount);
@@ -272,6 +291,28 @@ export default function ParticipantsPage() {
                 投票する
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 写真ズームモーダル */}
+      {zoomTarget && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center px-4"
+          onClick={() => setZoomTarget(null)}
+        >
+          <div className="w-full max-w-md">
+            <div className="relative w-full aspect-square rounded-3xl overflow-hidden border-2 border-white/40 shadow-2xl">
+              <Image
+                src={`${zoomTarget.photoURL}${zoomTarget.createdAt ? `?v=${zoomTarget.createdAt.seconds}` : ""}`}
+                alt={zoomTarget.nickname}
+                fill
+                sizes="(max-width: 768px) 96vw, 480px"
+                className="object-cover"
+              />
+            </div>
+            <p className="text-center text-white font-black mt-4">{zoomTarget.nickname}</p>
+            <p className="text-center text-white/70 text-xs mt-1">タップで閉じる</p>
           </div>
         </div>
       )}
@@ -371,6 +412,18 @@ export default function ParticipantsPage() {
                     {!loadedImages.has(p.uid) && (
                       <div className="absolute inset-0 bg-gray-200 animate-pulse z-10" />
                     )}
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-20"
+                      onMouseDown={() => startLongPress(p)}
+                      onMouseUp={clearLongPressTimer}
+                      onMouseLeave={clearLongPressTimer}
+                      onTouchStart={() => startLongPress(p)}
+                      onTouchEnd={clearLongPressTimer}
+                      onTouchCancel={clearLongPressTimer}
+                      onTouchMove={clearLongPressTimer}
+                      aria-label={`${p.nickname}の写真を拡大`}
+                    />
                     <Image
                       src={`${p.photoURL}${p.createdAt ? `?v=${p.createdAt.seconds}` : ""}`}
                       alt={p.nickname}
@@ -381,12 +434,12 @@ export default function ParticipantsPage() {
                       onLoad={() => setLoadedImages((prev) => new Set([...prev, p.uid]))}
                     />
                     {mutualLike && (
-                      <div className="absolute top-2 right-2 bg-pink-500 rounded-full w-7 h-7 flex items-center justify-center text-white text-sm shadow-lg">
+                      <div className="absolute top-2 right-2 z-30 bg-pink-500 rounded-full w-7 h-7 flex items-center justify-center text-white text-sm shadow-lg">
                         ♥
                       </div>
                     )}
                     {voted && (
-                      <div className="absolute top-2 left-2 bg-purple-500 rounded-full w-7 h-7 flex items-center justify-center text-white text-xs shadow-lg font-bold">
+                      <div className="absolute top-2 left-2 z-30 bg-purple-500 rounded-full w-7 h-7 flex items-center justify-center text-white text-xs shadow-lg font-bold">
                         ✓
                       </div>
                     )}
