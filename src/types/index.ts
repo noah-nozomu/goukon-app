@@ -4,6 +4,7 @@ export interface Participant {
   uid: string;
   nickname: string;
   photoURL: string;
+  bio?: string;
   createdAt: Timestamp;
 }
 

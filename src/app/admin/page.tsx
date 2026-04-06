@@ -18,7 +18,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { Match } from "@/types";
 
-const ADMIN_PASSWORD = "0522";
+const ADMIN_PASSWORD = "8810";
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
 const DELETE_BATCH_SIZE = 400;
 

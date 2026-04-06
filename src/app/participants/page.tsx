@@ -320,6 +320,12 @@ export default function ParticipantsPage() {
         >
           ← 戻る
         </button>
+        <button
+          onClick={() => router.push("/profile")}
+          className="mb-3 ml-auto block text-pink-100 text-xs font-bold underline underline-offset-2 hover:text-white transition-colors"
+        >
+          プロフィール編集
+        </button>
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-2xl font-black">参加者一覧 👀</h1>
