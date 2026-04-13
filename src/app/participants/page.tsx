@@ -56,9 +56,11 @@ export default function ParticipantsPage() {
 
   // 投票確認ダイアログ
   const [voteTarget, setVoteTarget] = useState<Participant | null>(null);
+  const [profileTarget, setProfileTarget] = useState<Participant | null>(null);
   // 写真ズームモーダル
   const [zoomTarget, setZoomTarget] = useState<Participant | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ignoreNextTapRef = useRef(false);
 
   const { myLikes, sendLike } = useLike();
   const { myVotes, sendVote } = useVote(voteLimit);
@@ -196,6 +198,7 @@ export default function ParticipantsPage() {
   const startLongPress = (target: Participant) => {
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
+      ignoreNextTapRef.current = true;
       setZoomTarget(target);
       longPressTimerRef.current = null;
     }, LONG_PRESS_MS);
@@ -317,6 +320,47 @@ export default function ParticipantsPage() {
         </div>
       )}
 
+      {/* プロフィール詳細モーダル */}
+      {profileTarget && (
+        <div
+          className="fixed inset-0 z-[55] bg-black/60 flex items-center justify-center px-6"
+          onClick={() => setProfileTarget(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 relative bg-gray-100">
+                <Image
+                  src={profileTarget.photoURL}
+                  alt={profileTarget.nickname}
+                  fill
+                  sizes="48px"
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <h2 className="font-black text-gray-800">{profileTarget.nickname}</h2>
+                <p className="text-xs text-gray-400">プロフィール詳細</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 min-h-24">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">
+                {profileTarget.bio?.trim() || "まだ詳細プロフィールは登録されていません"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setProfileTarget(null)}
+              className="w-full mt-4 py-3 rounded-2xl bg-pink-500 text-white font-bold"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* マッチング成立モーダル */}
       {matchNotification && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
@@ -407,6 +451,7 @@ export default function ParticipantsPage() {
                 <div
                   key={p.uid}
                   className="rounded-3xl overflow-hidden shadow-md bg-white border border-gray-100"
+                  onClick={() => setProfileTarget(p)}
                 >
                   <div className="aspect-square relative bg-gray-200">
                     {!loadedImages.has(p.uid) && (
@@ -415,6 +460,13 @@ export default function ParticipantsPage() {
                     <button
                       type="button"
                       className="absolute inset-0 z-20"
+                      onClick={() => {
+                        if (ignoreNextTapRef.current) {
+                          ignoreNextTapRef.current = false;
+                          return;
+                        }
+                        setProfileTarget(p);
+                      }}
                       onMouseDown={() => startLongPress(p)}
                       onMouseUp={clearLongPressTimer}
                       onMouseLeave={clearLongPressTimer}
@@ -449,7 +501,11 @@ export default function ParticipantsPage() {
                     <div className="flex gap-1.5">
                       {/* いいねボタン */}
                       <button
-                        onClick={() => handleLike(p)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLike(p);
+                        }}
                         disabled={liked || isLikeSending}
                         className={`flex-1 h-8 rounded-xl flex items-center justify-center text-sm transition-all duration-200 ${
                           liked
@@ -463,7 +519,11 @@ export default function ParticipantsPage() {
                       </button>
                       {/* マッチング投票ボタン */}
                       <button
-                        onClick={() => !voted && !isVoteSending && !voteLimitReached && setVoteTarget(p)}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!voted && !isVoteSending && !voteLimitReached) setVoteTarget(p);
+                        }}
                         disabled={voted || isVoteSending || voteLimitReached}
                         className={`flex-1 h-8 rounded-xl text-xs font-bold transition-all duration-200 ${
                           voted
