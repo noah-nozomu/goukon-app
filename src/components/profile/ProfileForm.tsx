@@ -8,10 +8,12 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import PhotoUpload from "./PhotoUpload";
+import { extractGoukonPublicIdFromUrl } from "@/lib/cloudinaryPublicId";
 import type { Participant } from "@/types";
 
 export default function ProfileForm() {
@@ -20,6 +22,7 @@ export default function ProfileForm() {
 
   const [nickname, setNickname] = useState<string>("");
   const [photoURL, setPhotoURL] = useState<string>("");
+  const [photoPublicId, setPhotoPublicId] = useState<string>("");
   const [bio, setBio] = useState<string>("");
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
@@ -35,6 +38,11 @@ export default function ProfileForm() {
         const data = snap.data() as Partial<Participant>;
         setNickname(data.nickname ?? "");
         setPhotoURL(data.photoURL ?? "");
+        setPhotoPublicId(
+          data.photoPublicId?.trim() ||
+            extractGoukonPublicIdFromUrl(data.photoURL) ||
+            ""
+        );
         setBio(data.bio ?? "");
         setHasProfile(true);
       })
@@ -61,11 +69,19 @@ export default function ProfileForm() {
     try {
       const ref = doc(db, "participants", user.uid);
       const existing = await getDoc(ref);
+      const resolvedPublicId =
+        photoPublicId.trim() ||
+        extractGoukonPublicIdFromUrl(photoURL) ||
+        "";
+
       if (existing.exists()) {
         // 既存ユーザーはプロフィールを更新（createdAt も更新して画像キャッシュを無効化）
         await updateDoc(ref, {
           nickname: nickname.trim(),
           photoURL,
+          ...(resolvedPublicId
+            ? { photoPublicId: resolvedPublicId }
+            : { photoPublicId: deleteField() }),
           bio: bio.trim(),
           createdAt: serverTimestamp(),
         });
@@ -74,6 +90,7 @@ export default function ProfileForm() {
           uid: user.uid,
           nickname: nickname.trim(),
           photoURL,
+          ...(resolvedPublicId ? { photoPublicId: resolvedPublicId } : {}),
           bio: bio.trim(),
           createdAt: serverTimestamp(),
         });
@@ -102,8 +119,9 @@ export default function ProfileForm() {
         {user && (
           <PhotoUpload
             userId={user.uid}
-            onUploadComplete={(url) => {
+            onUploadComplete={({ photoURL: url, photoPublicId: pid }) => {
               setPhotoURL(url);
+              setPhotoPublicId(pid);
               setError(null);
             }}
           />

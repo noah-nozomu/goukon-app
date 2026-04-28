@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Match } from "@/types";
+import { collectPublicIdsFromParticipantDocs } from "@/lib/cloudinaryPublicId";
 
 const ADMIN_PASSWORD = "8810";
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
@@ -167,7 +168,52 @@ function AdminDashboard() {
     setResetting(true);
     setConfirmReset(false);
     try {
-      const matchesSnap = await getDocs(collection(db, "matches"));
+      const [participantsSnap, matchesSnap, likesSnap, votesSnap] = await Promise.all([
+        getDocs(collection(db, "participants")),
+        getDocs(collection(db, "matches")),
+        getDocs(collection(db, "likes")),
+        getDocs(collection(db, "votes")),
+      ]);
+
+      const publicIds = collectPublicIdsFromParticipantDocs(participantsSnap.docs);
+
+      if (publicIds.length > 0) {
+        const clientSecret = process.env.NEXT_PUBLIC_ADMIN_API_SECRET;
+        if (!clientSecret || clientSecret.length < 8) {
+          showToast(
+            "❌ Cloudinary 連携: .env に ADMIN_API_SECRET（8文字以上）と同一の NEXT_PUBLIC_ADMIN_API_SECRET を設定してください"
+          );
+          return;
+        }
+        let res: Response;
+        try {
+          res = await fetch("/api/admin/delete-cloudinary-images", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${clientSecret}`,
+            },
+            body: JSON.stringify({ publicIds }),
+          });
+        } catch (netErr) {
+          console.error("Cloudinary API 接続失敗:", netErr);
+          showToast("❌ Cloudinary 削除APIに接続できませんでした（ネットワーク）");
+          return;
+        }
+        let json: { ok?: boolean; error?: string };
+        try {
+          json = await res.json();
+        } catch {
+          showToast(`❌ Cloudinary 削除の応答が不正です（HTTP ${res.status}）`);
+          return;
+        }
+        if (!res.ok || !json.ok) {
+          console.error("Cloudinary delete failed:", json);
+          showToast(json.error ? `❌ ${json.error}` : "❌ Cloudinary の画像削除に失敗しました");
+          return;
+        }
+      }
+
       const messageDocs: QueryDocumentSnapshot<DocumentData>[] = [];
       for (const matchDoc of matchesSnap.docs) {
         const msgsSnap = await getDocs(
@@ -176,12 +222,6 @@ function AdminDashboard() {
         messageDocs.push(...msgsSnap.docs);
       }
       await deleteDocsInChunks(messageDocs);
-
-      const [participantsSnap, likesSnap, votesSnap] = await Promise.all([
-        getDocs(collection(db, "participants")),
-        getDocs(collection(db, "likes")),
-        getDocs(collection(db, "votes")),
-      ]);
 
       await deleteDocsInChunks([
         ...participantsSnap.docs,

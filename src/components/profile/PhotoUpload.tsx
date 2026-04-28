@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 interface PhotoUploadProps {
   userId: string;
-  onUploadComplete: (url: string) => void;
+  onUploadComplete: (payload: { photoURL: string; photoPublicId: string }) => void;
 }
 
 const MAX_SIZE = 800;
@@ -77,8 +77,11 @@ export default function PhotoUpload({ userId, onUploadComplete }: PhotoUploadPro
         { method: "POST", body: formData }
       );
       if (!res.ok) throw new Error("Cloudinary upload failed");
-      const data = await res.json();
-      onUploadComplete(data.secure_url);
+      const data = await res.json() as { secure_url?: string; public_id?: string };
+      if (!data.secure_url || !data.public_id) {
+        throw new Error("Cloudinary response missing secure_url or public_id");
+      }
+      onUploadComplete({ photoURL: data.secure_url, photoPublicId: data.public_id });
     } catch (err) {
       console.error("アップロード失敗:", err);
       setError("写真のアップロードに失敗しました");
