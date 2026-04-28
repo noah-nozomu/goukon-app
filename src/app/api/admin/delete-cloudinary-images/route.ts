@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { resolveServerAdminPassword } from "@/lib/adminPassword";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,20 +24,8 @@ function configureCloudinary(): void {
   });
 }
 
-function verifyBearer(request: NextRequest): { ok: boolean; reason?: string } {
-  const expected = process.env.ADMIN_API_SECRET;
-  if (!expected || expected.length < 8) {
-    return {
-      ok: false,
-      reason: "ADMIN_API_SECRET（8文字以上）をサーバー環境に設定してください",
-    };
-  }
-  const auth = request.headers.get("authorization");
-  const token = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : null;
-  if (!token || token !== expected) {
-    return { ok: false, reason: "認証に失敗しました" };
-  }
-  return { ok: true };
+function verifyAdminPassword(candidate: string): boolean {
+  return candidate.trim() === resolveServerAdminPassword();
 }
 
 type DeletedMap = Record<string, string>;
@@ -69,15 +58,7 @@ async function deleteResourcesChunk(publicIds: string[]): Promise<DeletedMap> {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = verifyBearer(request);
-  if (!auth.ok) {
-    return NextResponse.json(
-      { ok: false, error: auth.reason ?? "Unauthorized" },
-      { status: auth.reason?.includes("設定") ? 503 : 401 }
-    );
-  }
-
-  let body: { publicIds?: unknown };
+  let body: { publicIds?: unknown; adminPassword?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -93,6 +74,14 @@ export async function POST(request: NextRequest) {
 
   if (publicIds.length === 0) {
     return NextResponse.json({ ok: true, deleted: 0, chunks: 0 });
+  }
+
+  const pwd = typeof body.adminPassword === "string" ? body.adminPassword : "";
+  if (!verifyAdminPassword(pwd)) {
+    return NextResponse.json(
+      { ok: false, error: "管理パスワードが正しくありません（.env の NEXT_PUBLIC_ADMIN_PASSWORD または ADMIN_PASSWORD を確認）" },
+      { status: 401 }
+    );
   }
 
   try {

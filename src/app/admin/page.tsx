@@ -18,8 +18,8 @@ import {
 import { db } from "@/lib/firebase";
 import type { Match } from "@/types";
 import { collectPublicIdsFromParticipantDocs } from "@/lib/cloudinaryPublicId";
+import { getAdminPasswordForClient } from "@/lib/adminPassword";
 
-const ADMIN_PASSWORD = "8810";
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
 const DELETE_BATCH_SIZE = 400;
 
@@ -29,7 +29,7 @@ function AdminLogin({ onUnlock }: { onUnlock: () => void }) {
   const [error, setError] = useState(false);
 
   const handleSubmit = () => {
-    if (input === ADMIN_PASSWORD) {
+    if (input.trim() === getAdminPasswordForClient()) {
       sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
       onUnlock();
     } else {
@@ -48,8 +48,9 @@ function AdminLogin({ onUnlock }: { onUnlock: () => void }) {
       <div className="w-full flex flex-col gap-3">
         <input
           type="password"
-          inputMode="numeric"
-          maxLength={4}
+          inputMode="text"
+          autoComplete="current-password"
+          maxLength={24}
           value={input}
           onChange={(e) => { setInput(e.target.value); setError(false); }}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
@@ -178,22 +179,17 @@ function AdminDashboard() {
       const publicIds = collectPublicIdsFromParticipantDocs(participantsSnap.docs);
 
       if (publicIds.length > 0) {
-        const clientSecret = process.env.NEXT_PUBLIC_ADMIN_API_SECRET;
-        if (!clientSecret || clientSecret.length < 8) {
-          showToast(
-            "❌ Cloudinary 連携: .env に ADMIN_API_SECRET（8文字以上）と同一の NEXT_PUBLIC_ADMIN_API_SECRET を設定してください"
-          );
-          return;
-        }
         let res: Response;
         try {
           res = await fetch("/api/admin/delete-cloudinary-images", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${clientSecret}`,
             },
-            body: JSON.stringify({ publicIds }),
+            body: JSON.stringify({
+              publicIds,
+              adminPassword: getAdminPasswordForClient(),
+            }),
           });
         } catch (netErr) {
           console.error("Cloudinary API 接続失敗:", netErr);
