@@ -179,9 +179,8 @@ function AdminDashboard() {
       const publicIds = collectPublicIdsFromParticipantDocs(participantsSnap.docs);
 
       if (publicIds.length > 0) {
-        let res: Response;
         try {
-          res = await fetch("/api/admin/delete-cloudinary-images", {
+          const res = await fetch("/api/admin/delete-cloudinary-images", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -191,22 +190,27 @@ function AdminDashboard() {
               adminPassword: getAdminPasswordForClient(),
             }),
           });
+          let json: { ok?: boolean; error?: string };
+          try {
+            json = await res.json();
+          } catch {
+            console.error(
+              `Cloudinary 削除: 応答の JSON が不正です（HTTP ${res.status}）。Firestore のリセットは続行します。`
+            );
+            json = {};
+          }
+          if (!res.ok || !json.ok) {
+            console.error(
+              "Cloudinary delete failed（Firestore のリセットは続行）:",
+              json.error ?? `HTTP ${res.status}`,
+              json
+            );
+          }
         } catch (netErr) {
-          console.error("Cloudinary API 接続失敗:", netErr);
-          showToast("❌ Cloudinary 削除APIに接続できませんでした（ネットワーク）");
-          return;
-        }
-        let json: { ok?: boolean; error?: string };
-        try {
-          json = await res.json();
-        } catch {
-          showToast(`❌ Cloudinary 削除の応答が不正です（HTTP ${res.status}）`);
-          return;
-        }
-        if (!res.ok || !json.ok) {
-          console.error("Cloudinary delete failed:", json);
-          showToast(json.error ? `❌ ${json.error}` : "❌ Cloudinary の画像削除に失敗しました");
-          return;
+          console.error(
+            "Cloudinary API 接続失敗（Firestore のリセットは続行）:",
+            netErr
+          );
         }
       }
 
