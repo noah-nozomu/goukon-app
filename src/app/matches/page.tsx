@@ -7,6 +7,7 @@ import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
+import SessionTabs from "@/components/SessionTabs";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import type { Match, Participant } from "@/types";
 
@@ -53,6 +54,8 @@ export default function MatchesPage() {
         <h1 className="text-2xl font-black">マッチング 💕</h1>
         <p className="text-pink-100 text-sm mt-1">お互いにいいねした相手</p>
       </header>
+
+      <SessionTabs active="dm" />
 
       <div className="p-4">
         {loading ? (

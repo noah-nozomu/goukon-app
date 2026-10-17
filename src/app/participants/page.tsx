@@ -16,8 +16,8 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { useLike } from "@/hooks/useLike";
 import { useVote } from "@/hooks/useVote";
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import SessionTabs from "@/components/SessionTabs";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import type { Participant } from "@/types";
 
@@ -427,6 +427,8 @@ export default function ParticipantsPage() {
         </div>
       </header>
 
+      <SessionTabs active="participants" />
+
       <div className="p-4">
         {loading ? (
           <div className="flex justify-center items-center h-48">
@@ -549,7 +551,7 @@ export default function ParticipantsPage() {
       {/* もらったいいね フローティングボタン */}
       <button
         onClick={openLikesModal}
-        className="fixed bottom-36 right-4 flex items-center gap-2 bg-white border border-pink-200 text-pink-500 font-bold text-sm px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all z-30"
+        className="fixed bottom-24 right-4 flex items-center gap-2 bg-white border border-pink-200 text-pink-500 font-bold text-sm px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all z-30"
       >
         💌 もらったいいね
         {unseenLikes > 0 && (
@@ -558,19 +560,6 @@ export default function ParticipantsPage() {
           </span>
         )}
       </button>
-
-      {/* メッセージ一覧へのフローティングボタン */}
-      <Link
-        href="/matches"
-        className="fixed bottom-24 right-4 flex items-center gap-2 bg-white border border-fuchsia-200 text-fuchsia-500 font-bold text-sm px-4 py-2.5 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all z-30"
-      >
-        💬 メッセージ
-        {unreadMessages > 0 && (
-          <span className="bg-red-500 text-white text-xs font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1">
-            {unreadMessages > 99 ? "99+" : unreadMessages}
-          </span>
-        )}
-      </Link>
 
       <BottomNav active="participants" unreadMessages={unreadMessages} />
     </main>

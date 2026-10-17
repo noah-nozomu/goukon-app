@@ -176,6 +176,17 @@ function AdminDashboard() {
         getDocs(collection(db, "votes")),
       ]);
 
+      let minigameDocs: QueryDocumentSnapshot<DocumentData>[] = [];
+      try {
+        const [minigameSnap, minigameVotesSnap] = await Promise.all([
+          getDocs(collection(db, "minigame")),
+          getDocs(collection(db, "minigame_votes")),
+        ]);
+        minigameDocs = [...minigameSnap.docs, ...minigameVotesSnap.docs];
+      } catch (minigameErr) {
+        console.error("ミニゲームデータの取得に失敗（本体のリセットは続行）:", minigameErr);
+      }
+
       const publicIds = collectPublicIdsFromParticipantDocs(participantsSnap.docs);
 
       if (publicIds.length > 0) {
@@ -230,6 +241,16 @@ function AdminDashboard() {
         ...matchesSnap.docs,
       ]);
 
+      if (minigameDocs.length > 0) {
+        try {
+          await deleteDocsInChunks(minigameDocs);
+        } catch (minigameErr) {
+          console.error("ミニゲームの削除に失敗:", minigameErr);
+          showToast("⚠️ 本体はリセットしました。ミニゲームの削除に失敗しました");
+          return;
+        }
+      }
+
       showToast("✅ リセット完了！次の回が始められます");
     } catch (err) {
       console.error("リセット失敗:", err);
@@ -260,6 +281,14 @@ function AdminDashboard() {
       </header>
 
       <div className="p-6 flex flex-col gap-5">
+
+        <button
+          onClick={() => router.push("/admin/minigame")}
+          className="w-full py-4 bg-white border border-gray-100 rounded-3xl shadow-sm text-left px-6 hover:border-pink-200 transition-colors"
+        >
+          <p className="text-xs text-gray-400 font-bold tracking-widest uppercase">ミニゲーム</p>
+          <p className="text-lg font-black text-gray-800 mt-1">🎲 ミニゲーム管理</p>
+        </button>
 
         {/* タイトル管理 */}
         <section className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
@@ -414,7 +443,7 @@ function AdminDashboard() {
             回のリセット
           </p>
           <p className="text-gray-500 text-sm mb-5">
-            参加者・いいね・マッチング・チャット履歴をすべて削除します。次の回を始めるときに使ってください。
+            参加者・いいね・マッチング・チャット履歴・ミニゲームをすべて削除します。次の回を始めるときに使ってください。
           </p>
           {!confirmReset ? (
             <button

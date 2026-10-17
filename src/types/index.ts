@@ -36,3 +36,17 @@ export interface Message {
   text: string;
   createdAt: Timestamp;
 }
+
+export interface MinigameCurrent {
+  themeId?: string;
+  themeText?: string;
+  status?: "waiting" | "voting" | "result";
+  createdAt?: Timestamp;
+}
+
+export interface MinigameVote {
+  themeId: string;
+  voterId: string;
+  targetId: string;
+  createdAt: Timestamp;
+}
