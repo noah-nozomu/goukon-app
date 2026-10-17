@@ -15,6 +15,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import BottomNav from "@/components/BottomNav";
+import MinigameHostPanel from "@/components/MinigameHostPanel";
 import SessionTabs from "@/components/SessionTabs";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { rankTopThree } from "@/lib/minigame";
@@ -144,7 +145,12 @@ export default function MinigamePage() {
 
       <SessionTabs active="minigame" />
 
-      <div className="p-4">
+      <div className="p-4 flex flex-col gap-4">
+        <MinigameHostPanel
+          current={current}
+          voteCount={votes.length}
+          isParticipant={participants.some((participant) => participant.uid === user?.uid)}
+        />
         {authLoading || !currentReady ? (
           <div className="flex justify-center items-center h-48">
             <div className="w-8 h-8 border-4 border-pink-400 border-t-transparent rounded-full animate-spin" />
