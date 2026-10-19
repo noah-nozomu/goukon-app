@@ -132,15 +132,15 @@ export default function MinigamePage() {
 
   return (
     <main className="min-h-screen pb-24">
-      <header className="bg-gradient-to-r from-pink-500 to-rose-500 px-6 pt-12 pb-6 text-white">
+      <header className="bg-gradient-to-r from-pink-500 to-rose-500 px-6 pt-5 pb-2.5 text-white">
         <button
           onClick={() => router.replace("/participants")}
-          className="mb-3 flex items-center gap-1 text-pink-100 text-sm hover:text-white transition-colors"
+          className="mb-1 flex items-center gap-1 text-pink-100 text-xs hover:text-white transition-colors"
         >
           ← 戻る
         </button>
-        <h1 className="text-2xl font-black">なんでもランキング</h1>
-        <p className="text-pink-100 text-sm mt-1">テーマにいちばん近い人を1人だけ選ぶ</p>
+        <h1 className="text-lg font-black leading-tight">なんでもランキング</h1>
+        <p className="text-pink-100 text-xs mt-0.5">テーマにいちばん近い人を1人だけ選ぶ</p>
       </header>
 
       <SessionTabs active="minigame" />
