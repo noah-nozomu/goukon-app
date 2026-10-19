@@ -50,3 +50,19 @@ export interface MinigameVote {
   targetId: string;
   createdAt: Timestamp;
 }
+
+export interface MinigameResultEntry {
+  uid: string;
+  nickname: string;
+  photoURL: string;
+  votes: number;
+  rank: number;
+}
+
+export interface MinigameResult {
+  themeId: string;
+  themeText: string;
+  totalVotes: number;
+  finishedAt?: Timestamp;
+  ranking: MinigameResultEntry[];
+}

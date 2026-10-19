@@ -19,6 +19,7 @@ import {
 import { db } from "@/lib/firebase";
 import { getAdminPasswordForClient } from "@/lib/adminPassword";
 import { PRESET_THEMES, createThemeId } from "@/lib/minigame";
+import { archiveMinigameRound } from "@/lib/minigameArchive";
 import type { MinigameCurrent } from "@/types";
 
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
@@ -137,6 +138,11 @@ function MinigameAdmin() {
     const previousThemeId = current?.themeId;
     const themeId = createThemeId();
     try {
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("前回の結果保存に失敗（新しい投票は開始します）:", archiveErr);
+      }
       await setDoc(doc(db, "minigame", "current"), {
         themeId,
         themeText,
@@ -168,6 +174,11 @@ function MinigameAdmin() {
     setBusy(true);
     try {
       await updateDoc(doc(db, "minigame", "current"), { status: "result" });
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("結果の保存に失敗（発表は続行）:", archiveErr);
+      }
       showToast("結果を発表しました");
     } catch (err) {
       console.error("結果発表に失敗:", err);
@@ -181,6 +192,11 @@ function MinigameAdmin() {
     if (busy) return;
     setBusy(true);
     try {
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("結果の保存に失敗（リセットは続行）:", archiveErr);
+      }
       await setDoc(
         doc(db, "minigame", "current"),
         { status: "waiting" },

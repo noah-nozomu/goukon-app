@@ -133,5 +133,15 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if canManageSession();
     }
+
+    // -------------------------------------------------------
+    // minigame_results: この回に締め切ったテーマの結果
+    //                   読み取りはログイン済み。保存と削除は進行操作と同じ権限
+    // -------------------------------------------------------
+    match /minigame_results/{themeId} {
+      allow read: if isAuthenticated();
+      allow create, update: if canManageSession();
+      allow delete: if canManageSession();
+    }
   }
 }

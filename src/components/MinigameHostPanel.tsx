@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   collection,
   doc,
@@ -17,6 +18,7 @@ import {
 import { db } from "@/lib/firebase";
 import { getAdminPasswordForClient } from "@/lib/adminPassword";
 import { PRESET_THEMES, createThemeId } from "@/lib/minigame";
+import { archiveMinigameRound } from "@/lib/minigameArchive";
 import type { MinigameCurrent } from "@/types";
 
 const ADMIN_SESSION_KEY = "goukon_admin_auth";
@@ -79,6 +81,11 @@ export default function MinigameHostPanel({
     const previousThemeId = current?.themeId;
     const themeId = createThemeId();
     try {
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("前回の結果保存に失敗（新しい投票は開始します）:", archiveErr);
+      }
       await setDoc(doc(db, "minigame", "current"), {
         themeId,
         themeText,
@@ -111,6 +118,11 @@ export default function MinigameHostPanel({
     setMessage(null);
     try {
       await updateDoc(doc(db, "minigame", "current"), { status: "result" });
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("結果の保存に失敗（発表は続行）:", archiveErr);
+      }
       setMessage("結果を発表しました");
     } catch (err) {
       console.error("結果発表に失敗:", err);
@@ -125,6 +137,11 @@ export default function MinigameHostPanel({
     setBusy(true);
     setMessage(null);
     try {
+      try {
+        await archiveMinigameRound(current);
+      } catch (archiveErr) {
+        console.error("結果の保存に失敗（リセットは続行）:", archiveErr);
+      }
       await setDoc(doc(db, "minigame", "current"), { status: "waiting" }, { merge: true });
       const votesSnap = await getDocs(collection(db, "minigame_votes"));
       await deleteDocsInChunks(votesSnap.docs);
@@ -137,20 +154,36 @@ export default function MinigameHostPanel({
     }
   };
 
-  if (!open) {
-    return (
+  const tabs = (
+    <div className="grid grid-cols-2 gap-2">
       <button
         type="button"
-        onClick={openPanel}
-        className="w-full text-center text-xs font-bold text-gray-400 py-1"
+        onClick={() => (open ? setOpen(false) : openPanel())}
+        className={`py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+          open
+            ? "bg-pink-500 text-white border-pink-500"
+            : "bg-white text-gray-500 border-gray-200"
+        }`}
       >
         幹事メニュー
       </button>
-    );
+      <Link
+        href="/minigame/results"
+        className="py-1.5 rounded-xl text-xs font-bold border border-gray-200 bg-white text-gray-500 text-center"
+      >
+        投票結果
+      </Link>
+    </div>
+  );
+
+  if (!open) {
+    return tabs;
   }
 
   if (!unlocked) {
     return (
+      <div className="flex flex-col gap-2">
+        {tabs}
       <section className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-black text-gray-800">幹事メニュー</p>
@@ -184,10 +217,13 @@ export default function MinigameHostPanel({
           開く
         </button>
       </section>
+      </div>
     );
   }
 
   return (
+    <div className="flex flex-col gap-2">
+      {tabs}
     <section className="bg-white border border-pink-100 rounded-3xl p-4 shadow-sm flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-black text-gray-800">幹事メニュー</p>
@@ -257,5 +293,6 @@ export default function MinigameHostPanel({
       </button>
       {message && <p className="text-center text-xs font-bold text-gray-500">{message}</p>}
     </section>
+    </div>
   );
 }

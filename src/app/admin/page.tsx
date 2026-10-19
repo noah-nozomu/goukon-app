@@ -178,11 +178,12 @@ function AdminDashboard() {
 
       let minigameDocs: QueryDocumentSnapshot<DocumentData>[] = [];
       try {
-        const [minigameSnap, minigameVotesSnap] = await Promise.all([
+        const [minigameSnap, minigameVotesSnap, minigameResultsSnap] = await Promise.all([
           getDocs(collection(db, "minigame")),
           getDocs(collection(db, "minigame_votes")),
+          getDocs(collection(db, "minigame_results")),
         ]);
-        minigameDocs = [...minigameSnap.docs, ...minigameVotesSnap.docs];
+        minigameDocs = [...minigameSnap.docs, ...minigameVotesSnap.docs, ...minigameResultsSnap.docs];
       } catch (minigameErr) {
         console.error("ミニゲームデータの取得に失敗（本体のリセットは続行）:", minigameErr);
       }

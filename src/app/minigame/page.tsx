@@ -246,14 +246,14 @@ function VotingView({
           <p>投票できる相手がいません</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           {others.map((participant) => (
             <button
               key={participant.uid}
               type="button"
               disabled={voted}
               onClick={() => onSelect(participant)}
-              className="rounded-3xl overflow-hidden shadow-md bg-white border border-gray-100 text-left disabled:opacity-70"
+              className="rounded-2xl overflow-hidden shadow-sm bg-white border border-gray-100 text-left disabled:opacity-70"
             >
               <div className="aspect-square bg-gray-200">
                 {participant.photoURL ? (
@@ -264,7 +264,7 @@ function VotingView({
                   />
                 ) : null}
               </div>
-              <p className="px-3 py-3 font-bold text-gray-700 text-sm truncate">{participant.nickname}</p>
+              <p className="px-1.5 py-1.5 font-bold text-gray-700 text-[11px] leading-tight truncate">{participant.nickname}</p>
             </button>
           ))}
         </div>
