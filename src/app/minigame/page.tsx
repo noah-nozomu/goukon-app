@@ -187,9 +187,9 @@ export default function MinigamePage() {
       {voteTarget && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center px-4 pb-6">
           <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-xl">
-            <p className="text-center text-sm text-gray-400">この人に投票しますか？</p>
+            <p className="text-center text-sm text-gray-400">テーマの１位に選びますか？</p>
             <p className="text-center font-black text-xl text-gray-800 mt-2">{voteTarget.nickname}</p>
-            <p className="text-center text-xs text-gray-400 mt-2">投票すると変更できません</p>
+            <p className="text-center text-xs text-gray-400 mt-2">選ぶと変更できません</p>
             {voteError && <p className="text-center text-red-500 text-sm mt-3">{voteError}</p>}
             <div className="flex gap-3 mt-5">
               <button
@@ -207,7 +207,7 @@ export default function MinigamePage() {
                 disabled={sending}
                 className="flex-1 py-3 bg-pink-500 text-white font-bold rounded-2xl disabled:opacity-40"
               >
-                {sending ? "送信中..." : "投票する"}
+                {sending ? "送信中..." : "選ぶ"}
               </button>
             </div>
           </div>
